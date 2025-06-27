@@ -19,6 +19,11 @@ def read_root():
     }
 
 def get_connection():
+    print("🔐 Connecting with:")
+    print("HOST:", os.getenv("DB_HOST"))
+    print("USER:", os.getenv("DB_USER"))
+    print("PASS:", os.getenv("DB_PASS"))
+    
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         dbname=os.getenv("DB_NAME"),
