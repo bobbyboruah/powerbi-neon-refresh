@@ -7,7 +7,7 @@ import psycopg2
 import pandas as pd
 import os
 import traceback
-import datetime  # ✅ required for datetime.date
+import datetime
 
 app = FastAPI()
 
@@ -15,7 +15,7 @@ app = FastAPI()
 def read_root():
     return {
         "message": "✅ KPI API is live!",
-        "endpoints": ["/customers", "/sales", "/inventory"]
+        "endpoints": ["/customers", "/sales", "/inventory", "/public_customers", "/public_sales"]
     }
 
 def get_connection():
@@ -51,18 +51,14 @@ def get_inventory():
         conn = get_connection()
         df = pd.read_sql("SELECT * FROM inventory", conn)
         conn.close()
-
-        # ✅ Handle datetime and object columns
         for col in df.columns:
             if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
                 try:
                     df[col] = df[col].apply(
                         lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.datetime, datetime.date)) else x
-
                     )
                 except Exception:
                     pass
-
         return JSONResponse(content=df.to_dict(orient="records"))
     except Exception as e:
         print("❌ ERROR:", traceback.format_exc())
@@ -75,14 +71,38 @@ def get_customers():
         df = pd.read_sql("SELECT * FROM customer", conn)
         conn.close()
         print("✅ Loaded customer table with", len(df), "rows")
-
         for col in df.columns:
             print(f"🔍 Converting column: {col} (type: {df[col].dtype})")
             df[col] = df[col].apply(
                 lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime)) else x
             )
-
         return JSONResponse(content=df.to_dict(orient="records"))
     except Exception as e:
         print("❌ ERROR:", traceback.format_exc())
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.get("/public_customers")
+def get_public_customers():
+    try:
+        conn = get_connection()
+        df = pd.read_sql('SELECT * FROM public."public customer"', conn)
+        conn.close()
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
+                df[col] = df[col].astype(str)
+        return JSONResponse(content=df.to_dict(orient="records"))
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.get("/public_sales")
+def get_public_sales():
+    try:
+        conn = get_connection()
+        df = pd.read_sql('SELECT * FROM public."public sales"', conn)
+        conn.close()
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
+                df[col] = df[col].astype(str)
+        return JSONResponse(content=df.to_dict(orient="records"))
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
