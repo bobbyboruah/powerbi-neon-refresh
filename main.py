@@ -23,7 +23,7 @@ def get_connection():
     print("HOST:", os.getenv("DB_HOST"))
     print("USER:", os.getenv("DB_USER"))
     print("PASS:", os.getenv("DB_PASS"))
-    
+
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         dbname=os.getenv("DB_NAME"),
@@ -57,7 +57,8 @@ def get_inventory():
             if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
                 try:
                     df[col] = df[col].apply(
-                        lambda x: str(x) if isinstance(x, (pd.Timestamp, pd.NaT, datetime.date)) else x
+                        lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.datetime, datetime.date)) else x
+
                     )
                 except Exception:
                     pass
