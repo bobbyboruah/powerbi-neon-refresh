@@ -11,6 +11,14 @@ import datetime  # ✅ required for datetime.date
 
 app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {
+        "message": "✅ KPI API is live!",
+        "endpoints": ["/customers", "/sales", "/inventory"]
+    }
+
+
 def get_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
