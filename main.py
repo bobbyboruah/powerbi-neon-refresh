@@ -81,4 +81,8 @@ def get_customers():
         print("❌ ERROR:", traceback.format_exc())
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+@app.get("/")
+def root():
+    return {"status": "API is running"}
+
 
