@@ -18,7 +18,6 @@ def read_root():
         "endpoints": ["/customers", "/sales", "/inventory"]
     }
 
-
 def get_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
@@ -26,9 +25,8 @@ def get_connection():
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASS"),
         port=os.getenv("DB_PORT", 5432),
-        sslmode=os.getenv("DB_SSLMODE", "require") 
+        sslmode=os.getenv("DB_SSLMODE", "require")
     )
-
 
 @app.get("/sales")
 def get_sales():
@@ -49,7 +47,7 @@ def get_inventory():
         df = pd.read_sql("SELECT * FROM inventory", conn)
         conn.close()
 
-        # ✅ Proper datetime and object column handling
+        # ✅ Handle datetime and object columns
         for col in df.columns:
             if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
                 try:
@@ -75,16 +73,10 @@ def get_customers():
         for col in df.columns:
             print(f"🔍 Converting column: {col} (type: {df[col].dtype})")
             df[col] = df[col].apply(
-                lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime))else x
+                lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime)) else x
             )
 
         return JSONResponse(content=df.to_dict(orient="records"))
     except Exception as e:
         print("❌ ERROR:", traceback.format_exc())
         return JSONResponse(content={"error": str(e)}, status_code=500)
-
-@app.get("/")
-def root():
-    return {"status": "API is running"}
-
-
