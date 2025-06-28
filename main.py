@@ -91,7 +91,7 @@ def seed_data():
     conn.close()
     print("✅ Data inserted successfully!")
 
-    return {"message": "✅ Seed complete", "customers": len(customers), "sales": len(sales)}
+    return {"message": "✅ Seed complete", "customers": len(customers), "sales": len(sales), "inventory": len(inventory)}
 
 # --- Optional: Run locally ---
 if __name__ == "__main__":
