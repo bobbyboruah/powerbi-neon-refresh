@@ -1,0 +1,7 @@
+services:
+  - type: cron
+    name: refresh-neon-db
+    runtime: python
+    schedule: "*/10 * * * *"  # every 10 minutes
+    buildCommand: ""
+    startCommand: "python main.py"
