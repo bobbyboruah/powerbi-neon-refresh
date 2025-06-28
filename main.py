@@ -1,108 +1,85 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 import psycopg2
-import pandas as pd
-import os
-import traceback
-import datetime
+from faker import Faker
+import uuid
+import random
+from datetime import datetime, timedelta
 
-app = FastAPI()
+# --- Connect using parameter-based method ---
+conn = psycopg2.connect(
+    host="ep-royal-sunset-a849z8dn-pooler.eastus2.azure.neon.tech",
+    dbname="pocdb",
+    user="pocdb_owner",
+    password="npg_F7UzML9irYPH",
+    port="5432",
+    sslmode="require"
+)
 
-@app.get("/")
-def read_root():
-    return {
-        "message": "✅ KPI API is live!",
-        "endpoints": ["/customers", "/sales", "/inventory", "/public_customers", "/public_sales"]
-    }
+cur = conn.cursor()
+fake = Faker()
 
-def get_connection():
-    print("🔐 Connecting with:")
-    print("HOST:", os.getenv("DB_HOST"))
-    print("USER:", os.getenv("DB_USER"))
-    print("PASS:", os.getenv("DB_PASS"))
+# --- Step 1: Clean old data ---
+print("🧹 Cleaning old data...")
+cur.execute("DELETE FROM poc_sales")
+cur.execute("DELETE FROM poc_customer")
+cur.execute("DELETE FROM poc_inventory")
+conn.commit()
 
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
-        port=os.getenv("DB_PORT", 5432),
-        sslmode=os.getenv("DB_SSLMODE", "require")
-    )
+# --- Step 2: Insert Customers ---
+print("👥 Inserting customers...")
+customers = []
+regions = ['East', 'West', 'North', 'South']
+for _ in range(150):
+    cid = str(uuid.uuid4())
+    name = fake.name()
+    region = random.choice(regions)
+    signup_date = fake.date_between(start_date='-2y', end_date='today')
+    customers.append((cid, name, region, signup_date))
 
-@app.get("/sales")
-def get_sales():
-    try:
-        conn = get_connection()
-        df = pd.read_sql("SELECT * FROM sales", conn)
-        conn.close()
-        df["sale_date"] = df["sale_date"].astype(str)
-        return JSONResponse(content=df.to_dict(orient="records"))
-    except Exception as e:
-        print("❌ ERROR:", traceback.format_exc())
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+cur.executemany(
+    "INSERT INTO poc_customer (customer_id, customer_name, region, signup_date) VALUES (%s, %s, %s, %s)",
+    customers
+)
+conn.commit()
 
-@app.get("/inventory")
-def get_inventory():
-    try:
-        conn = get_connection()
-        df = pd.read_sql("SELECT * FROM inventory", conn)
-        conn.close()
-        for col in df.columns:
-            if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
-                try:
-                    df[col] = df[col].apply(
-                        lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.datetime, datetime.date)) else x
-                    )
-                except Exception:
-                    pass
-        return JSONResponse(content=df.to_dict(orient="records"))
-    except Exception as e:
-        print("❌ ERROR:", traceback.format_exc())
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+# --- Step 3: Insert Inventory ---
+print("📦 Inserting inventory...")
+skus = []
+inventory = []
+for i in range(150):
+    sku = f"SKU-{1000 + i}"
+    name = fake.word().capitalize() + " Part"
+    stock_qty = random.randint(0, 5)
+    reorder_level = random.randint(10, 50)
+    last_updated = datetime.now() - timedelta(days=random.randint(0, 30))
+    skus.append(sku)
+    inventory.append((sku, name, stock_qty, reorder_level, last_updated))
 
-@app.get("/customers")
-def get_customers():
-    try:
-        conn = get_connection()
-        df = pd.read_sql("SELECT * FROM customer", conn)
-        conn.close()
-        print("✅ Loaded customer table with", len(df), "rows")
-        for col in df.columns:
-            print(f"🔍 Converting column: {col} (type: {df[col].dtype})")
-            df[col] = df[col].apply(
-                lambda x: str(x) if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime)) else x
-            )
-        return JSONResponse(content=df.to_dict(orient="records"))
-    except Exception as e:
-        print("❌ ERROR:", traceback.format_exc())
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+cur.executemany(
+    "INSERT INTO poc_inventory (sku, product_name, stock_qty, reorder_level, last_updated) VALUES (%s, %s, %s, %s, %s)",
+    inventory
+)
+conn.commit()
 
-@app.get("/public_customers")
-def get_public_customers():
-    try:
-        conn = get_connection()
-        df = pd.read_sql('SELECT * FROM public."public customer"', conn)
-        conn.close()
-        for col in df.columns:
-            if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
-                df[col] = df[col].astype(str)
-        return JSONResponse(content=df.to_dict(orient="records"))
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+# --- Step 4: Insert Sales ---
+print("💸 Inserting sales...")
+sales = []
+for _ in range(150):  # More sales than customers
+    sid = str(uuid.uuid4())
+    cust_id = random.choice(customers)[0]
+    sku = random.choice(skus)
+    quantity = random.randint(1, 10)
+    sale_date = fake.date_between(start_date='-1y', end_date='today')
+    revenue = round(random.uniform(50, 500), 2)
+    sales.append((sid, cust_id, sku, quantity, sale_date, revenue))
 
-@app.get("/public_sales")
-def get_public_sales():
-    try:
-        conn = get_connection()
-        df = pd.read_sql('SELECT * FROM public."public sales"', conn)
-        conn.close()
-        for col in df.columns:
-            if pd.api.types.is_datetime64_any_dtype(df[col]) or df[col].dtype == "object":
-                df[col] = df[col].astype(str)
-        return JSONResponse(content=df.to_dict(orient="records"))
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+cur.executemany(
+    "INSERT INTO poc_sales (sale_id, customer_id, product_sku, quantity, sale_date, revenue) VALUES (%s, %s, %s, %s, %s, %s)",
+    sales
+)
+conn.commit()
+
+# --- Done ---
+print("✅ Data inserted successfully!")
+
+cur.close()
+conn.close()
