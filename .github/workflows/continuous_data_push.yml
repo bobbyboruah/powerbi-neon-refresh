@@ -1,12 +1,11 @@
 name: Continuous Data Push
 
-on:
-  workflow_dispatch:
+on: { workflow_dispatch: {} }
 
 jobs:
   run-continuous-sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 360  # Max 6 hours runtime
 
     steps:
       - name: Checkout code
@@ -21,10 +20,10 @@ jobs:
         run: pip install psycopg2-binary faker
 
       - name: Run main.py
-        run: python main.py
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASS: ${{ secrets.DB_PASS }}
           DB_PORT: ${{ secrets.DB_PORT }}
+        run: python main.py
