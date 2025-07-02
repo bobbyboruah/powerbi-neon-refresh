@@ -1,13 +1,14 @@
 name: Continuous Data Push
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   run-continuous-sync:
     runs-on: ubuntu-latest
     timeout-minutes: 360
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
