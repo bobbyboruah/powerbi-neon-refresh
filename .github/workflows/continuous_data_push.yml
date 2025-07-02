@@ -6,7 +6,7 @@ on:
 jobs:
   run-continuous-sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # Max 6 hours runtime
+    timeout-minutes: 360
 
     steps:
       - name: Checkout code
